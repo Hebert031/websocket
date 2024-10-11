@@ -23,6 +23,9 @@ var upgrader = websocket.Upgrader{
 // Estrutura para armazenar os clientes e seus canais
 var channels = make(map[string]map[*websocket.Conn]bool)
 
+// Adicionando mais canais
+var channelNames = []string{"canal1", "canal2", "canal3", "canal4", "canal5", "canal6", "canal7", "canal8", "canal9", "canal10"}
+
 func createJWT() (string, error) {
 	claims := jwt.MapClaims{
 		"authorized": true,
@@ -70,6 +73,17 @@ func broadcastClients(channel string) {
 	broadcastMessage(channel, string(jsonData))
 }
 
+func getClientIP(r *http.Request) string {
+	// Tenta obter o IP do cabeçalho X-Forwarded-For (caso o contêiner esteja atrás de um proxy)
+	forwarded := r.Header.Get("X-Forwarded-For")
+	if forwarded != "" {
+		return forwarded
+	}
+
+	// Se não houver cabeçalho X-Forwarded-For, pega o IP direto do RemoteAddr
+	return r.RemoteAddr
+}
+
 func handleConnections(w http.ResponseWriter, r *http.Request) {
 	tokenString := r.URL.Query().Get("token")
 	channel := r.URL.Query().Get("channel") // Nome do canal vindo da URL
@@ -84,6 +98,9 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Token inválido ou expirado", http.StatusUnauthorized)
 		return
 	}
+
+	// Obtém o IP real do cliente
+	clientIP := getClientIP(r)
 
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -101,23 +118,41 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	channels[channel][ws] = true
 	broadcastClients(channel)
 
+	// Goroutine para enviar pings regulares
+	go func() {
+		for {
+			time.Sleep(30 * time.Second) // Intervalo de ping
+			if err := ws.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
+				fmt.Printf("Erro ao enviar ping para IP %s: %v\n", clientIP, err)
+				return // Saia se houver um erro
+			}
+		}
+	}()
+
 	for {
+		// Define um tempo limite para ler mensagens
+		ws.SetReadDeadline(time.Now().Add(60 * time.Second)) // Exemplo: 60 segundos
 		_, msg, err := ws.ReadMessage()
 		if err != nil {
-			fmt.Println("Erro ao ler a mensagem:", err)
+			fmt.Printf("Erro ao ler a mensagem do IP %s: %v\n", clientIP, err)
 			delete(channels[channel], ws)
 			broadcastClients(channel)
 			break
 		}
 
 		if len(msg) > 1024 {
-			fmt.Println("Mensagem muito longa, descartando.")
+			fmt.Printf("Mensagem muito longa do IP %s, descartando.\n", clientIP)
 			continue
 		}
 
-		fmt.Printf("Mensagem recebida no canal %s: %s\n", channel, msg)
-		broadcastMessage(channel, string(msg))
+		// Log da mensagem recebida com o IP do cliente
+		fmt.Printf("Mensagem recebida do IP %s no canal %s: %s\n", clientIP, channel, msg)
+
+		// Inclui o IP do cliente na mensagem enviada para o frontend
+		messageWithIP := fmt.Sprintf("IP: %s - Mensagem: %s", clientIP, string(msg))
+		broadcastMessage(channel, messageWithIP)
 	}
+
 }
 
 func main() {

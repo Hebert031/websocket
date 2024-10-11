@@ -1,58 +1,256 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebSocket com Canais e JWT</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            background-color: #f4f4f4;
+            height: 80vh;
+            background: linear-gradient(135deg, #1a1a1a, #333);
+            color: #fff;
+            padding: 20px;
+            overflow: hidden;
+            /* Impede a barra de rolagem do corpo */
         }
-        #chat {
-            width: 400px;
-            height: 300px;
-            border: 1px solid #ccc;
-            padding: 10px;
-            overflow-y: scroll;
-            background-color: white;
+
+        .container {
+            display: flex;
+            background-color: #222;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            width: 800px;
+            height: 600px;
         }
+
+        .menu {
+            flex: 1;
+            height: 59%;
+            background: linear-gradient(#4768b5, #35488e);
+            border-radius: 30px 0 0 9px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .menu .items {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .menu .items .item {
+            height: auto;
+            /* Ajuste a altura se necessário */
+            border-bottom: 1px solid #6780cc;
+            display: flex;
+            margin-right: 10px;
+            justify-content: flex-start;
+            align-items: center;
+            color: #9fb5ef;
+            font-size: 15pt;
+            /* Reduzido para evitar sobreposição */
+            cursor: pointer;
+            padding: 19px 8px;
+            position: relative;
+            /* Para o efeito de pulsar */
+            transition: background 0.3s, color 0.3s;
+            /* Melhorar transição de cores */
+        }
+
+        .menu .items .item:hover {
+            background-color: #4f6ebd;
+            color: #cfe5ff;
+        }
+
+        .menu .items .item:active {
+            transform: scale(0.95);
+            /* Efeito de clicar */
+        }
+
+        .menu .items .item::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            transition: opacity 0.3s ease;
+            opacity: 0;
+            pointer-events: none;
+            /* Não interfere na interação */
+        }
+
+        .menu .items .item:hover::after {
+            opacity: 1;
+            /* Mostra o efeito de destaque ao passar o mouse */
+        }
+
+        .items .item div:last-child {
+            padding-left: 10px;
+            /* Adiciona espaço à esquerda do texto */
+        }
+
         #connectedUsers {
             width: 200px;
-            height: 300px;
-            border: 1px solid #ccc;
+            height: 562px;
+            border: 9px solid #444;
+            border-radius: 38px;
+            padding: 13px;
+            background-color: #333;
+            overflow-y: auto;
+            margin-left: 14px;
+        }
+
+        .chat-section {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            margin-left: 20px;
+        }
+
+        .chat-header {
+            font-size: 24px;
+            margin-bottom: 10px;
+            text-align: center;
+            color: #9fb5ef;
+            font-weight: bold;
+            /* Deixar o título mais destacado */
+        }
+
+        #chat {
+            flex: 1;
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 15px;
+            overflow-y: scroll;
+            background-color: #2a2a2a;
+            margin-bottom: 10px;
+            color: #fff;
+            height: 100%;
+            /* Preencher o espaço disponível */
+        }
+
+        input[type="text"] {
+            width: 100%;
             padding: 10px;
-            margin-right: 20px;
-            background-color: #e9e9e9;
+            margin-bottom: 10px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            font-size: 16px;
+            background-color: #444;
+            color: #fff;
         }
-        #messageInput {
-            width: 400px;
-            margin-top: 10px;
+
+        button {
+            padding: 10px;
+            background-color: #006660;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease, transform 0.2s;
         }
-        #sendMessage {
-            margin-top: 10px;
-            display: block;
+
+        button:hover {
+            background-color: #004f4b;
+            transform: scale(1.05);
+        }
+
+        #chat p {
+            margin: 0 0 10px;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                width: 100%;
+                height: auto;
+            }
+
+            #connectedUsers {
+                width: 100%;
+                margin-left: 0;
+                margin-bottom: 20px;
+            }
+
+            .chat-section {
+                width: 100%;
+            }
         }
     </style>
 </head>
+
 <body>
-    <div id="connectedUsers"></div>
-    <div>
-        <h1>Chat WebSocket com JWT e Canais</h1>
-        <div id="chat"></div>
-        <input type="text" id="channelInput" placeholder="Digite o nome do canal...">
-        <input type="text" id="messageInput" placeholder="Digite sua mensagem...">
-        <button id="sendMessage">Enviar Mensagem</button>
+    <div class="container">
+        <div class="menu">
+            <div class="menu">
+                <ul class="items">
+                    <li class="item" onclick="connectWebSocket('Acampa')">
+                        <div>🚗</div>
+                        <div>Acampa</div>
+                    </li>
+                    <li class="item" onclick="connectWebSocket('Indicar')">
+                        <div>🔧</div>
+                        <div>Indicar</div>
+                    </li>
+                    <li class="item" onclick="connectWebSocket('Vinho')">
+                        <div>🍷</div>
+                        <div>Vinho</div>
+                    </li>
+                    <li class="item" onclick="connectWebSocket('Ilub')">
+                        <div>💻</div>
+                        <div>ILub</div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div id="connectedUsers"></div>
+        <div class="chat-section">
+            <div class="chat-header">Chat</div>
+            <div id="chat"></div>
+            <input type="text" id="messageInput" placeholder="Digite sua mensagem...">
+            <input type="text" id="channelInput" placeholder="Digite o canal..." style="display: none;">
+            <button id="sendMessage">Enviar</button>
+        </div>
     </div>
 
     <script>
         let socket;
+        let currentChannel = 'geral'; // Canal padrão
 
         async function connectWebSocket(channel) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.close(); // Fechar a conexão anterior
+            }
+
             try {
                 const response = await fetch('http://172.17.0.1:8081/get-token');
                 if (!response.ok) {
@@ -75,7 +273,7 @@
                     } catch (e) {
                         const chat = document.getElementById('chat');
                         chat.innerHTML += '<p>' + event.data + '</p>';
-                        chat.scrollTop = chat.scrollHeight;
+                        chat.scrollTop = chat.scrollHeight; // Rolagem automática para a última mensagem
                     }
                 };
 
@@ -89,33 +287,22 @@
                     document.getElementById('chat').innerHTML += '<p><strong>Erro na conexão!</strong></p>';
                 };
 
+                currentChannel = channel;
+                document.getElementById('channelInput').style.display = 'none'; // Oculta o campo de canal
             } catch (error) {
-                console.error('Erro:', error);
-                document.getElementById('chat').innerHTML += '<p><strong>Erro ao conectar ao WebSocket!</strong></p>';
+                console.error('Erro ao conectar: ', error);
+                document.getElementById('chat').innerHTML += '<p><strong>Erro ao conectar!</strong></p>';
             }
         }
 
         document.getElementById('sendMessage').onclick = function () {
-            const channelInput = document.getElementById('channelInput').value;
-            const messageInput = document.getElementById('messageInput').value;
-
-            if (!channelInput) {
-                alert('Por favor, insira um canal.');
-                return;
-            }
-
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(messageInput);
+            const messageInput = document.getElementById('messageInput');
+            if (socket && socket.readyState === WebSocket.OPEN && messageInput.value) {
+                socket.send(messageInput.value);
                 messageInput.value = '';
-            } else {
-                connectWebSocket(channelInput);
             }
-        };
-
-        window.onload = () => {
-            document.getElementById('channelInput').value = 'geral';  // Canal padrão
-            connectWebSocket('geral');
         };
     </script>
 </body>
+
 </html>
