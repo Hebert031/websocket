@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket com Canais e JWT</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        #chat {
+            width: 400px;
+            height: 300px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            overflow-y: scroll;
+            background-color: white;
+        }
+        #connectedUsers {
+            width: 200px;
+            height: 300px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-right: 20px;
+            background-color: #e9e9e9;
+        }
+        #messageInput {
+            width: 400px;
+            margin-top: 10px;
+        }
+        #sendMessage {
+            margin-top: 10px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="connectedUsers"></div>
+    <div>
+        <h1>Chat WebSocket com JWT e Canais</h1>
+        <div id="chat"></div>
+        <input type="text" id="channelInput" placeholder="Digite o nome do canal...">
+        <input type="text" id="messageInput" placeholder="Digite sua mensagem...">
+        <button id="sendMessage">Enviar Mensagem</button>
+    </div>
+
+    <script>
+        let socket;
+
+        async function connectWebSocket(channel) {
+            try {
+                const response = await fetch('http://172.17.0.1:8081/get-token');
+                if (!response.ok) {
+                    throw new Error('Erro ao obter o token');
+                }
+                const token = await response.text();
+                socket = new WebSocket('ws://172.17.0.1:8081/ws?token=' + token + '&channel=' + channel);
+
+                socket.onopen = function () {
+                    console.log('Conectado ao WebSocket no canal ' + channel);
+                    document.getElementById('chat').innerHTML += `<p><strong>Conectado ao canal ${channel}!</strong></p>`;
+                };
+
+                socket.onmessage = function (event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.clientesConectados !== undefined) {
+                            document.getElementById('connectedUsers').innerHTML = `<p>Clientes conectados: ${data.clientesConectados}</p>`;
+                        }
+                    } catch (e) {
+                        const chat = document.getElementById('chat');
+                        chat.innerHTML += '<p>' + event.data + '</p>';
+                        chat.scrollTop = chat.scrollHeight;
+                    }
+                };
+
+                socket.onclose = function () {
+                    console.log('Conexão fechada');
+                    document.getElementById('chat').innerHTML += '<p><strong>Conexão fechada!</strong></p>';
+                };
+
+                socket.onerror = function (error) {
+                    console.log('Erro no WebSocket: ', error);
+                    document.getElementById('chat').innerHTML += '<p><strong>Erro na conexão!</strong></p>';
+                };
+
+            } catch (error) {
+                console.error('Erro:', error);
+                document.getElementById('chat').innerHTML += '<p><strong>Erro ao conectar ao WebSocket!</strong></p>';
+            }
+        }
+
+        document.getElementById('sendMessage').onclick = function () {
+            const channelInput = document.getElementById('channelInput').value;
+            const messageInput = document.getElementById('messageInput').value;
+
+            if (!channelInput) {
+                alert('Por favor, insira um canal.');
+                return;
+            }
+
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(messageInput);
+                messageInput.value = '';
+            } else {
+                connectWebSocket(channelInput);
+            }
+        };
+
+        window.onload = () => {
+            document.getElementById('channelInput').value = 'geral';  // Canal padrão
+            connectWebSocket('geral');
+        };
+    </script>
+</body>
+</html>
