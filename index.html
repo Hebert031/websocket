@@ -107,15 +107,26 @@
         }
 
         #connectedUsers {
-            width: 200px;
-            height: 562px;
-            border: 9px solid #444;
-            border-radius: 38px;
-            padding: 13px;
-            background-color: #333;
+            width: 135px;
+            /* Largura ajustada */
+            height: 48px;
+            /* Altura ajustada */
+            border: 3px solid #2afd1c;
+            /* Borda ajustada */
+            border-radius: 35px;
+            padding: 9px;
+            background-color: #097f11;
             overflow-y: auto;
-            margin-left: 14px;
+            margin: 10px 6px;
+            position: absolute;
+            /* Define o posicionamento absoluto */
+            top: -4px;
+            /* Ajuste conforme necessário */
+            left: 1500px;
+            /* Move para a esquerda */
         }
+
+
 
         .chat-section {
             display: flex;
@@ -268,7 +279,7 @@
                     try {
                         const data = JSON.parse(event.data);
                         if (data.clientesConectados !== undefined) {
-                            document.getElementById('connectedUsers').innerHTML = `<p>Clientes conectados: ${data.clientesConectados}</p>`;
+                            document.getElementById('connectedUsers').innerHTML = `<p>Conexões: ${data.clientesConectados}</p>`;
                         }
                     } catch (e) {
                         const chat = document.getElementById('chat');
