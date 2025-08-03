@@ -68,4 +68,4 @@ A chave secreta para assinatura do JWT está definida como uma variável global 
 
 
 Contato
-Para mais informações, entre em contato com hebert.souza@camptecnologia.com.
+Para mais informações, entre em contato.
